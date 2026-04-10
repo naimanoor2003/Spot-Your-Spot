@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spot Your Spot — Select Hall</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0e6b7a;
+            font-family: Arial, sans-serif;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px 20px 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .header-left p {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* User bar */
+        .user-bar {
+            background-color: rgba(255,255,255,0.1);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background-color: #6db8b0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .user-info p {
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .user-info span {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        .role-badge {
+            margin-left: auto;
+            background-color: #b8e0a8;
+            color: #0e6b7a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-badge.admin {
+            background-color: #FFD700;
+            color: #333;
+        }
+
+        /* Section label */
+        .section-label {
+            padding: 0 20px 12px 20px;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Hall list */
+        .halls-list {
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .hall-card {
+            background-color: white;
+            border-radius: 14px;
+            padding: 18px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .hall-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+        }
+
+        .hall-icon {
+            width: 48px;
+            height: 48px;
+            background-color: #e8f4f5;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .hall-details {
+            flex: 1;
+        }
+
+        .hall-name {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #0e6b7a;
+            margin-bottom: 4px;
+        }
+
+        .hall-meta {
+            font-size: 0.78rem;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .availability-bar {
+            background-color: #e0e0e0;
+            border-radius: 20px;
+            height: 6px;
+            overflow: hidden;
+        }
+
+        .availability-fill {
+            height: 100%;
+            background-color: #b8e0a8;
+            border-radius: 20px;
+        }
+
+        .availability-text {
+            font-size: 0.72rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .hall-arrow {
+            font-size: 1.2rem;
+            color: #6db8b0;
+            flex-shrink: 0;
+        }
+
+        /* Footer hint */
+        .footer-hint {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.75rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <h1>🎓 Spot Your Spot</h1>
+            <p>Select a lecture hall</p>
+        </div>
+       {% if role == 'admin' %}
+        <a href="/admin" class="logout-btn" style="background-color:#FFD700;color:#333;margin-right:6px;">⚙️ Dashboard</a>
+        {% endif %}
+        <a href="/logout" class="logout-btn">Log out</a> 
+    </div>
+
+    <!-- User bar -->
+    <div class="user-bar">
+        <div class="user-avatar">👤</div>
+        <div class="user-info">
+            <p>{{ username }}</p>
+            <span>Signed in</span>
+        </div>
+        <span class="role-badge {% if role == 'admin' %}admin{% endif %}">{{ role }}</span>
+    </div>
+
+    <p class="section-label">Available Halls</p>
+
+    <!-- Hall list -->
+    <div class="halls-list">
+        {% for hall in halls %}
+        <a class="hall-card" href="/hall/{{ hall.id }}">
+            <div class="hall-icon">🏛️</div>
+            <div class="hall-details">
+                <div class="hall-name">{{ hall.name }}</div>
+                <div class="hall-meta">🕐 {{ hall.lecture_time }} &nbsp;·&nbsp; {{ hall.capacity }} seats</div>
+                <div class="availability-bar">
+                    <div class="availability-fill" style="width: {{ (hall.available / hall.capacity * 100)|int }}%"></div>
+                </div>
+                <div class="availability-text">{{ hall.available }} seats available</div>
+            </div>
+            <div class="hall-arrow"></div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <p class="footer-hint">Tap a lecture hall to see live seat availability</p>
+
+</body>
+</html>

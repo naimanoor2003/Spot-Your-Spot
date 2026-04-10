@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ hall_name }} — Spot Your Spot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0e6b7a;
+            font-family: Arial, sans-serif;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .back-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        .back-btn:hover { opacity: 1; }
+
+        .header-title { text-align: center; }
+        .header-title h1 { font-size: 1rem; font-weight: bold; }
+        .header-title p { font-size: 0.72rem; opacity: 0.7; }
+
+        .logout-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .logout-btn:hover { opacity: 1; }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 16px 16px 16px;
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* ===== NOTIFICATION ===== */
+        .notification {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #b8e0a8;
+            color: #2d5a1b;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: bold;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+            max-width: 300px;
+            pointer-events: none;
+        }
+
+        .notification.show { opacity: 1; }
+
+        /* ===== STATS ===== */
+        .stats-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background-color: rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #b8e0a8;
+        }
+
+        .stat-box .label { font-size: 0.68rem; opacity: 0.7; }
+
+        /* ===== ENTRANCES ===== */
+        .entrance-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .entrance {
+            flex: 1;
+            background-color: #d9d9d9;
+            color: #333;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .entrance.highlighted {
+            background-color: #FFD700;
+            color: #333;
+            transform: scale(1.03);
+        }
+
+        /* ===== STAGE ===== */
+        .stage {
+            background-color: rgba(255,255,255,0.1);
+            border: 2px solid #6db8b0;
+            border-radius: 8px;
+            text-align: center;
+            padding: 8px;
+            margin-bottom: 10px;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        /* ===== SEAT GRID WITH AISLE ===== */
+        .seat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) 24px repeat(5, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .aisle {
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.5rem;
+            opacity: 0.3;
+            writing-mode: vertical-rl;
+            letter-spacing: 2px;
+        }
+
+        /* ===== SEATS ===== */
+        .seat {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.5rem;
+            font-weight: bold;
+            transition: all 0.25s ease;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .seat.available {
+            background-color: #b8e0a8;
+            color: #2d5a1b;
+        }
+
+        .seat.occupied {
+            background-color: #c8c8c8;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .seat.accessible { border: 2px solid #FFD700; }
+
+        .seat.selected {
+            background-color: #6db8b0 !important;
+            color: white;
+            transform: scale(1.1);
+            border-color: white;
+        }
+
+        .seat.available:hover {
+            transform: scale(1.08);
+            border-color: white;
+        }
+
+        .seat.just-freed {
+            animation: justFreed 1s ease;
+        }
+
+        @keyframes justFreed {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); background-color: #FFD700; }
+            100% { transform: scale(1); }
+        }
+
+        .seat.hidden-filter {
+            opacity: 0.2;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .accessible-icon {
+            position: absolute;
+            top: 1px;
+            right: 1px;
+            font-size: 0.4rem;
+        }
+
+        /* ===== INFO PANEL ===== */
+        .info-panel {
+            background-color: rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p { font-size: 0.8rem; opacity: 0.65; }
+        .info-panel .selected-info { font-size: 0.88rem; font-weight: bold; opacity: 1; color: #b8e0a8; }
+        .info-panel .entrance-info { font-size: 0.8rem; color: #6db8b0; }
+
+        .update-indicator {
+            text-align: center;
+            font-size: 0.68rem;
+            opacity: 0.5;
+        }
+
+        /* ===== FILTERS PANEL ===== */
+        .filter-section {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .filter-section h3 { font-size: 0.85rem; margin-bottom: 12px; opacity: 0.9; }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toggle-label { font-size: 0.85rem; }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+        }
+
+        .toggle-switch input { display: none; }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background-color: #d9d9d9;
+            border-radius: 26px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 3px;
+            top: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider { background-color: #b8e0a8; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+        .area-buttons { display: flex; gap: 10px; }
+
+        .area-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: none;
+            color: white;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .area-btn.selected {
+            background-color: #6db8b0;
+            border-color: #6db8b0;
+            font-weight: bold;
+        }
+
+        .area-btn:hover { border-color: #6db8b0; }
+
+        .apply-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #b8e0a8;
+            color: #0e6b7a;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 6px;
+        }
+
+        .apply-btn:hover { background-color: #a0d490; }
+
+        .filter-note {
+            text-align: center;
+            font-size: 0.72rem;
+            opacity: 0.5;
+            margin-top: 10px;
+        }
+
+        /* ===== ENTRY PANEL ===== */
+        .entry-overview {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .entry-overview h3 { font-size: 0.85rem; margin-bottom: 12px; opacity: 0.9; }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) 10px repeat(5, 1fr);
+            gap: 3px;
+            margin-bottom: 12px;
+        }
+
+        .mini-seat {
+            aspect-ratio: 1;
+            border-radius: 3px;
+            background-color: #b8e0a8;
+        }
+
+        .mini-seat.occupied { background-color: #c8c8c8; }
+        .mini-seat.selected-mini { background-color: #FFD700; }
+        .mini-seat.accessible { border: 1px solid #FFD700; }
+        .mini-aisle { background: transparent; }
+
+        .entrance-highlight-box {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .entrance-highlight-box h3 { font-size: 0.85rem; margin-bottom: 10px; opacity: 0.9; }
+
+        .recommended-entrance {
+            background-color: #FFD700;
+            color: #333;
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .entrance-note { font-size: 0.75rem; opacity: 0.6; }
+
+        .no-seat-selected {
+            text-align: center;
+            opacity: 0.6;
+            font-size: 0.85rem;
+            padding: 20px 0;
+        }
+
+        .back-to-map-btn {
+            width: 100%;
+            padding: 13px;
+            background-color: #6db8b0;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .back-to-map-btn:hover { background-color: #5aa89f; }
+
+        /* ===== LEGEND PANEL ===== */
+        .legend-card {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .legend-card h3 { font-size: 0.85rem; margin-bottom: 14px; opacity: 0.9; }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .legend-item:last-child { margin-bottom: 0; }
+
+        .legend-box {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        .legend-box.available { background-color: #b8e0a8; }
+        .legend-box.occupied { background-color: #c8c8c8; }
+        .legend-box.accessible { background-color: #b8e0a8; border: 2px solid #FFD700; }
+        .legend-box.entrance { background-color: #FFD700; }
+        .legend-box.selected-leg { background-color: #6db8b0; }
+
+        .legend-text h4 { font-size: 0.88rem; margin-bottom: 2px; }
+        .legend-text p { font-size: 0.72rem; opacity: 0.6; line-height: 1.3; }
+
+        .update-note {
+            background-color: rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 0.75rem;
+            opacity: 0.7;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* ===== ADMIN ===== */
+        .admin-section {
+            background-color: rgba(255,215,0,0.1);
+            border: 1px solid #FFD700;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 14px;
+        }
+
+        .admin-section h3 { font-size: 0.82rem; color: #FFD700; margin-bottom: 6px; }
+        .admin-section p { font-size: 0.72rem; opacity: 0.5; margin-bottom: 12px; }
+
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+        }
+
+        .admin-btn {
+            padding: 4px 2px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.5rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .admin-btn.free { background-color: #b8e0a8; color: #2d5a1b; }
+        .admin-btn.taken { background-color: #c8c8c8; color: #666; }
+        .admin-btn:hover { opacity: 0.8; transform: scale(1.05); }
+
+        /* ===== BOTTOM NAV ===== */
+        .bottom-nav {
+            display: flex;
+            background-color: white;
+            border-radius: 16px 16px 0 0;
+            padding: 10px 0 6px 0;
+            flex-shrink: 0;
+        }
+
+        .nav-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: none;
+            color: #aaa;
+        }
+
+        .nav-tab.active { color: #0e6b7a; }
+        .nav-tab .tab-icon { font-size: 1.3rem; }
+        .nav-tab .tab-label { font-size: 0.68rem; font-weight: bold; }
+
+        .pulse { animation: pulse 0.5s ease; }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Notification popup -->
+    <div class="notification" id="notification"></div>
+
+    <!-- Header -->
+    <div class="header">
+        <a href="/halls" class="back-btn">← Back</a>
+        <div class="header-title">
+            <h1>{{ hall_name }}</h1>
+            <p>🕐 {{ lecture_time }}</p>
+        </div>
+        <a href="/logout" class="logout-btn">Out</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- SEAT MAP PANEL -->
+        <div class="panel active" id="panel-map">
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="number" id="availableCount">-</div>
+                    <div class="label">Available</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="occupiedCount">-</div>
+                    <div class="label">Occupied</div>
+                </div>
+                <div class="stat-box">
+                    <div class="number" id="totalCount">-</div>
+                    <div class="label">Total</div>
+                </div>
+            </div>
+
+            <div class="entrance-row">
+                <div class="entrance" id="entrance-left">🚪 Left Entrance</div>
+                <div class="entrance" id="entrance-right">🚪 Right Entrance</div>
+            </div>
+
+            <div class="stage">STAGE / FRONT OF HALL</div>
+            <div class="seat-grid" id="seatGrid"></div>
+
+            <div class="info-panel" id="infoPanel">
+                <p>Select an available seat to see which entrance to use</p>
+            </div>
+
+            <p class="update-indicator" id="updateIndicator">🟢 Live updates every 8 seconds</p>
+        </div>
+
+        <!-- FILTERS PANEL -->
+        <div class="panel" id="panel-filters">
+            <div class="filter-section">
+                <h3>Accessibility</h3>
+                <div class="toggle-row">
+                    <span class="toggle-label">Show accessible seats only</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="accessibleToggle" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>Preferred Seating Area</h3>
+                <div class="area-buttons">
+                    <button class="area-btn selected" id="areaFront" onclick="selectArea('front')">Front</button>
+                    <button class="area-btn" id="areaMiddle" onclick="selectArea('middle')">Middle</button>
+                    <button class="area-btn" id="areaBack" onclick="selectArea('back')">Back</button>
+                </div>
+            </div>
+
+            <button class="apply-btn" onclick="applyFilters()">Apply Filters</button>
+            <p class="filter-note">Filters apply to the seat map view only</p>
+        </div>
+
+        <!-- ENTRY GUIDANCE PANEL -->
+        <div class="panel" id="panel-entry">
+            <div class="entry-overview">
+                <h3>Hall Overview</h3>
+                <div class="mini-grid" id="miniGrid"></div>
+            </div>
+
+            <div class="entrance-highlight-box" id="entryGuidanceBox">
+                <div class="no-seat-selected">
+                    Select a seat on the map first to see entry guidance
+                </div>
+            </div>
+
+            <button class="back-to-map-btn" onclick="switchTab('map')">← Back to Seat Map</button>
+        </div>
+
+        <!-- LEGEND PANEL -->
+        <div class="panel" id="panel-legend">
+            <div class="legend-card">
+                <h3>Seat Availability</h3>
+                <div class="legend-item">
+                    <div class="legend-box available"></div>
+                    <div class="legend-text">
+                        <h4>Available Seat</h4>
+                        <p>This seat is free — tap to select it</p>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box occupied"></div>
+                    <div class="legend-text">
+                        <h4>Occupied Seat</h4>
+                        <p>This seat is currently taken</p>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box selected-leg">✓</div>
+                    <div class="legend-text">
+                        <h4>Selected Seat</h4>
+                        <p>The seat you have chosen</p>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box accessible">♿</div>
+                    <div class="legend-text">
+                        <h4>Accessible Seat</h4>
+                        <p>Designated accessible seating with gold border</p>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box entrance">🚪</div>
+                    <div class="legend-text">
+                        <h4>Lecture Hall Entrance</h4>
+                        <p>Highlighted entrance is closest to your selected seat</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="update-note">
+                🟢 Seat data automatically updates every 8 seconds
+            </div>
+
+            {% if role == 'admin' %}
+            <div class="admin-section">
+                <h3>⚙️ SIMULATION CONTROLS (Admin Only)</h3>
+                <p>Click any seat to flip its occupancy — simulates sensor data</p>
+                <div class="admin-grid" id="adminGrid"></div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-tab active" id="tab-map" onclick="switchTab('map')">
+            <span class="tab-icon">🗺️</span>
+            <span class="tab-label">Map</span>
+        </button>
+        <button class="nav-tab" id="tab-filters" onclick="switchTab('filters')">
+            <span class="tab-icon">🔧</span>
+            <span class="tab-label">Filters</span>
+        </button>
+        <button class="nav-tab" id="tab-entry" onclick="switchTab('entry')">
+            <span class="tab-icon">🚪</span>
+            <span class="tab-label">Entry</span>
+        </button>
+        <button class="nav-tab" id="tab-legend" onclick="switchTab('legend')">
+            <span class="tab-icon">📋</span>
+            <span class="tab-label">Legend</span>
+        </button>
+    </div>
+
+    <script>
+        const HALL_ID = "{{ hall_id }}";
+        const ROLE = "{{ role }}";
+        let selectedSeat = null;
+        let allSeats = [];
+        let previousSeats = {};
+        let activeFilter = { accessible: false, area: 'none' };
+        let notificationTimeout = null;
+
+        // --- Tab switching ---
+        function switchTab(tab) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`panel-${tab}`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            if (tab === 'entry') updateEntryPanel();
+            if (tab === 'legend' && ROLE === 'admin') renderAdminGrid();
+        }
+
+        // --- Fetch seats ---
+        async function fetchSeats() {
+            const res = await fetch(`/api/seats/${HALL_ID}`);
+            const data = await res.json();
+
+            // Check for newly freed seats
+            const newlyFreed = [];
+            data.seats.forEach(seat => {
+                const prev = previousSeats[seat.id];
+                if (prev !== undefined && prev === true && seat.occupied === false) {
+                    newlyFreed.push(seat.id + 1);
+                }
+            });
+
+            // Store previous state
+            data.seats.forEach(seat => {
+                previousSeats[seat.id] = seat.occupied;
+            });
+
+            allSeats = data.seats;
+            renderSeats(newlyFreed);
+            renderMiniGrid();
+            updateStats();
+            flashIndicator();
+
+            // Show notification for newly freed seats
+            if (newlyFreed.length > 0) {
+                const seatList = newlyFreed.map(id => `S${id}`).join(', ');
+                showNotification(`🟢 Seat${newlyFreed.length > 1 ? 's' : ''} ${seatList} just became available!`);
+            }
+        }
+
+        // --- Show notification ---
+        function showNotification(message) {
+            const el = document.getElementById('notification');
+            el.textContent = message;
+            el.classList.add('show');
+            if (notificationTimeout) clearTimeout(notificationTimeout);
+            notificationTimeout = setTimeout(() => {
+                el.classList.remove('show');
+            }, 3000);
+        }
+
+        // --- Render seat grid with aisle ---
+        function renderSeats(newlyFreed = []) {
+            const grid = document.getElementById('seatGrid');
+            grid.innerHTML = '';
+
+            // Group seats by row
+            const rows = {};
+            allSeats.forEach(seat => {
+                if (!rows[seat.row]) rows[seat.row] = [];
+                rows[seat.row].push(seat);
+            });
+
+            Object.keys(rows).sort((a, b) => a - b).forEach(rowKey => {
+                const rowSeats = rows[rowKey].sort((a, b) => a.col - b.col);
+                rowSeats.forEach((seat, colIndex) => {
+                    // Insert aisle gap after column 4
+                    if (colIndex === 5) {
+                        const aisle = document.createElement('div');
+                        aisle.className = 'aisle';
+                        aisle.textContent = '│';
+                        grid.appendChild(aisle);
+                    }
+
+                    const div = document.createElement('div');
+                    div.className = 'seat ' + (seat.occupied ? 'occupied' : 'available');
+                    if (seat.accessible) div.classList.add('accessible');
+                    if (selectedSeat && selectedSeat.id === seat.id) div.classList.add('selected');
+                    if (newlyFreed.includes(seat.id + 1) && !seat.occupied) div.classList.add('just-freed');
+
+                    // Apply filters
+                    if (!seat.occupied) {
+                        if (activeFilter.accessible && !seat.accessible) div.classList.add('hidden-filter');
+                        const totalRows = Object.keys(rows).length;
+                        const third = Math.floor(totalRows / 3);
+                        if (activeFilter.area === 'front' && seat.row >= third) div.classList.add('hidden-filter');
+                        if (activeFilter.area === 'middle' && (seat.row < third || seat.row >= third * 2)) div.classList.add('hidden-filter');
+                        if (activeFilter.area === 'back' && seat.row < third * 2) div.classList.add('hidden-filter');
+                    }
+
+                    div.innerHTML = `S${seat.id + 1}`;
+                    if (seat.accessible) div.innerHTML += `<span class="accessible-icon">♿</span>`;
+
+                    if (!seat.occupied && !div.classList.contains('hidden-filter')) {
+                        div.addEventListener('click', () => selectSeat(seat));
+                    }
+
+                    grid.appendChild(div);
+                });
+            });
+
+            if (selectedSeat) {
+                const still = allSeats.find(s => s.id === selectedSeat.id && !s.occupied);
+                if (still) { highlightEntrance(selectedSeat); }
+                else {
+                    selectedSeat = null;
+                    resetInfoPanel();
+                    showNotification('⚠️ Your selected seat was just taken!');
+                }
+            }
+        }
+
+        // --- Select seat ---
+        function selectSeat(seat) {
+            selectedSeat = seat;
+            renderSeats();
+            highlightEntrance(seat);
+            updateInfoPanel(seat);
+        }
+
+        // --- Highlight entrance ---
+        function highlightEntrance(seat) {
+            document.querySelectorAll('.entrance').forEach(e => e.classList.remove('highlighted'));
+            const closest = seat.col <= 4 ? 'left' : 'right';
+            document.getElementById(`entrance-${closest}`).classList.add('highlighted');
+        }
+
+        // --- Info panel ---
+        function updateInfoPanel(seat) {
+            const closest = seat.col <= 4 ? 'Left' : 'Right';
+            document.getElementById('infoPanel').innerHTML = `
+                <p class="selected-info">Seat ${seat.id + 1} — Row ${seat.row + 1}, Col ${seat.col + 1}</p>
+                <p class="entrance-info">✅ Use the ${closest} Entrance</p>
+                ${seat.accessible ? '<p style="color:#FFD700;font-size:0.78rem">♿ Accessible seat</p>' : ''}
+            `;
+        }
+
+        function resetInfoPanel() {
+            document.getElementById('infoPanel').innerHTML = `<p>Select an available seat to see which entrance to use</p>`;
+            document.querySelectorAll('.entrance').forEach(e => e.classList.remove('highlighted'));
+        }
+
+        // --- Stats ---
+        function updateStats() {
+            const available = allSeats.filter(s => !s.occupied).length;
+            document.getElementById('availableCount').textContent = available;
+            document.getElementById('occupiedCount').textContent = allSeats.length - available;
+            document.getElementById('totalCount').textContent = allSeats.length;
+        }
+
+        // --- Mini grid ---
+        function renderMiniGrid() {
+            const grid = document.getElementById('miniGrid');
+            grid.innerHTML = '';
+            const rows = {};
+            allSeats.forEach(seat => {
+                if (!rows[seat.row]) rows[seat.row] = [];
+                rows[seat.row].push(seat);
+            });
+
+            Object.keys(rows).sort((a, b) => a - b).forEach(rowKey => {
+                const rowSeats = rows[rowKey].sort((a, b) => a.col - b.col);
+                rowSeats.forEach((seat, colIndex) => {
+                    if (colIndex === 5) {
+                        const aisle = document.createElement('div');
+                        aisle.className = 'mini-aisle';
+                        grid.appendChild(aisle);
+                    }
+                    const div = document.createElement('div');
+                    div.className = 'mini-seat' + (seat.occupied ? ' occupied' : '');
+                    if (seat.accessible) div.classList.add('accessible');
+                    if (selectedSeat && selectedSeat.id === seat.id) div.classList.add('selected-mini');
+                    grid.appendChild(div);
+                });
+            });
+        }
+
+        // --- Entry panel ---
+        function updateEntryPanel() {
+            renderMiniGrid();
+            const box = document.getElementById('entryGuidanceBox');
+            if (!selectedSeat) {
+                box.innerHTML = `<div class="no-seat-selected">Select a seat on the map first to see entry guidance</div>`;
+                return;
+            }
+            const closest = selectedSeat.col <= 4 ? 'Left' : 'Right';
+            box.innerHTML = `
+                <h3>Recommended Entrance</h3>
+                <div class="recommended-entrance">🚪 ${closest} Entrance</div>
+                <p class="entrance-note">Use this entrance to reach Seat ${selectedSeat.id + 1} with minimal disruption</p>
+            `;
+        }
+
+        // --- Filters ---
+        function selectArea(area) {
+            activeFilter.area = area;
+            document.querySelectorAll('.area-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById(`area${area.charAt(0).toUpperCase() + area.slice(1)}`).classList.add('selected');
+        }
+
+        function applyFilters() {
+            activeFilter.accessible = document.getElementById('accessibleToggle').checked;
+            renderSeats();
+            switchTab('map');
+        }
+
+        // --- Admin grid ---
+        function renderAdminGrid() {
+            const grid = document.getElementById('adminGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            allSeats.forEach(seat => {
+                const btn = document.createElement('button');
+                btn.className = 'admin-btn ' + (seat.occupied ? 'taken' : 'free');
+                btn.textContent = `${seat.id + 1}`;
+                btn.onclick = async function() {
+                    await fetch(`/api/toggle/${HALL_ID}/${seat.id}`, { method: 'POST' });
+                    await fetchSeats();
+                    renderAdminGrid();
+                };
+                grid.appendChild(btn);
+            });
+        
+        }
+
+       async function toggleSeat(seatId) {
+            await fetch(`/api/toggle/${HALL_ID}/${seatId}`, { method: 'POST' });
+            await fetchSeats();
+            if (ROLE === 'admin') renderAdminGrid();
+        }
+
+        // --- Flash indicator ---
+        function flashIndicator() {
+            const el = document.getElementById('updateIndicator');
+            if (!el) return;
+            el.classList.add('pulse');
+            setTimeout(() => el.classList.remove('pulse'), 500);
+        }
+
+        fetchSeats();
+        setInterval(fetchSeats, 8000);
+    </script>
+
+</body>
+</html>

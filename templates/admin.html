@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — Spot Your Spot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #0e6b7a;
+            font-family: Arial, sans-serif;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0,0,0,0.15);
+        }
+
+        .header h1 { font-size: 1.1rem; font-weight: bold; }
+        .header p { font-size: 0.75rem; opacity: 0.7; margin-top: 2px; }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .halls-btn {
+            background-color: #6db8b0;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .halls-btn:hover { background-color: #5aa89f; }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .content {
+            flex: 1;
+            padding: 20px 16px;
+            overflow-y: auto;
+        }
+
+        /* Summary cards */
+        .summary-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            flex: 1;
+            background-color: rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #b8e0a8;
+        }
+
+        .summary-card .label {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        /* Section title */
+        .section-title {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        /* Hall stat cards */
+        .hall-stat-card {
+            background-color: white;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            color: #333;
+        }
+
+        .hall-stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .hall-stat-name {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #0e6b7a;
+        }
+
+        .hall-stat-time {
+            font-size: 0.75rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .occupancy-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .occupancy-badge.high { background-color: #fdecea; color: #c62828; }
+        .occupancy-badge.medium { background-color: #fff8e1; color: #f57f17; }
+        .occupancy-badge.low { background-color: #e8f5e9; color: #2e7d32; }
+
+        .hall-stat-grid {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .hall-mini-stat {
+            flex: 1;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .hall-mini-stat .num {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #0e6b7a;
+        }
+
+        .hall-mini-stat .lbl {
+            font-size: 0.68rem;
+            color: #888;
+        }
+
+        .occupancy-bar-wrap {
+            margin-bottom: 10px;
+        }
+
+        .occupancy-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .occupancy-bar {
+            background-color: #e0e0e0;
+            border-radius: 20px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        .occupancy-fill {
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.5s ease;
+        }
+
+        .occupancy-fill.high { background-color: #ef5350; }
+        .occupancy-fill.medium { background-color: #ffa726; }
+        .occupancy-fill.low { background-color: #66bb6a; }
+
+        .hall-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .busiest-row {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .hall-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-btn {
+            padding: 8px 14px;
+            background-color: #0e6b7a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .view-btn:hover { background-color: #0a5260; }
+
+        .reset-btn {
+            padding: 8px 14px;
+            background-color: #fdecea;
+            color: #c62828;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover { background-color: #ffcdd2; }
+
+        /* Refresh indicator */
+        .refresh-bar {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.72rem;
+            opacity: 0.5;
+        }
+
+        .pulse { animation: pulse 0.5s ease; }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>⚙️ Admin Dashboard</h1>
+            <p>Welcome, {{ username }}</p>
+        </div>
+        <div class="header-right">
+            <a href="/halls" class="halls-btn">🏛️ Halls</a>
+            <a href="/logout" class="logout-btn">Log out</a>
+        </div>
+    </div>
+
+    <div class="content">
+
+        <!-- Summary row -->
+        <div class="summary-row" id="summaryRow">
+            <div class="summary-card">
+                <div class="number" id="totalSeats">-</div>
+                <div class="label">Total Seats</div>
+            </div>
+            <div class="summary-card">
+                <div class="number" id="totalAvailable">-</div>
+                <div class="label">Available</div>
+            </div>
+            <div class="summary-card">
+                <div class="number" id="totalOccupied">-</div>
+                <div class="label">Occupied</div>
+            </div>
+        </div>
+
+        <p class="section-title">Lecture Hall Overview</p>
+
+        <!-- Hall cards -->
+        <div id="hallCards">
+            {% for hall in halls %}
+            <div class="hall-stat-card" id="card-{{ hall.id }}">
+                <div class="hall-stat-header">
+                    <div>
+                        <div class="hall-stat-name">{{ hall.name }}</div>
+                        <div class="hall-stat-time">🕐 {{ hall.lecture_time }}</div>
+                    </div>
+                    <div class="occupancy-badge {% if hall.occupancy_pct >= 75 %}high{% elif hall.occupancy_pct >= 40 %}medium{% else %}low{% endif %}">
+                        {{ hall.occupancy_pct }}% Full
+                    </div>
+                </div>
+
+                <div class="hall-stat-grid">
+                    <div class="hall-mini-stat">
+                        <div class="num" style="color:#2e7d32">{{ hall.available }}</div>
+                        <div class="lbl">Available</div>
+                    </div>
+                    <div class="hall-mini-stat">
+                        <div class="num" style="color:#c62828">{{ hall.occupied }}</div>
+                        <div class="lbl">Occupied</div>
+                    </div>
+                    <div class="hall-mini-stat">
+                        <div class="num">{{ hall.total }}</div>
+                        <div class="lbl">Total</div>
+                    </div>
+                </div>
+
+                <div class="occupancy-bar-wrap">
+                    <div class="occupancy-bar-label">
+                        <span>Occupancy</span>
+                        <span>{{ hall.occupancy_pct }}%</span>
+                    </div>
+                    <div class="occupancy-bar">
+                        <div class="occupancy-fill {% if hall.occupancy_pct >= 75 %}high{% elif hall.occupancy_pct >= 40 %}medium{% else %}low{% endif %}"
+                             style="width: {{ hall.occupancy_pct }}%"></div>
+                    </div>
+                </div>
+                <div class="hall-footer">
+                    <span class="busiest-row">📊 Busiest row: Row {{ hall.busiest_row }}</span>
+                    <div class="hall-actions">
+                        <button class="reset-btn" onclick="resetHall('{{ hall.id }}')">Reset</button>
+                        <a href="/hall/{{ hall.id }}" class="view-btn">View →</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <p class="refresh-bar" id="refreshBar">🟢 Dashboard refreshes every 10 seconds</p>
+
+    </div>
+
+    <script>
+        async function resetHall(hallId) {
+            if (!confirm('Reset all seats in this hall to available?')) return;
+            await fetch(`/api/reset/${hallId}`, { method: 'POST' });
+            location.reload();
+        }
+
+        async function refreshDashboard() {
+            const res = await fetch('/api/dashboard');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            let totalSeats = 0, totalAvailable = 0, totalOccupied = 0;
+            data.halls.forEach(hall => {
+                totalSeats += hall.total;
+                totalAvailable += hall.available;
+                totalOccupied += hall.occupied;
+            });
+
+            document.getElementById('totalSeats').textContent = totalSeats;
+            document.getElementById('totalAvailable').textContent = totalAvailable;
+            document.getElementById('totalOccupied').textContent = totalOccupied;
+
+            const el = document.getElementById('refreshBar');
+            el.textContent = '🟢 Dashboard updated';
+            el.classList.add('pulse');
+            setTimeout(() => {
+                el.classList.remove('pulse');
+                el.textContent = '🟢 Dashboard refreshes every 10 seconds';
+            }, 1000);
+        }
+
+        setInterval(refreshDashboard, 10000);
+    </script>
+
+</body>
+</html>
