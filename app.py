@@ -59,16 +59,135 @@ entrances = [
     {"id": "left", "label": "Left Entrance", "col": 0},
     {"id": "right", "label": "Right Entrance", "col": 9}
 ]
+def recommend_seat(seats, preference="none", accessible_only=False):
+    """
+    Seat recommendation engine.
+    Scores each available seat based on:
+    - Preferred area (front/middle/back)
+    - Proximity to nearest entrance
+    - Accessibility requirements
+    - Aisle adjacency (easier access)
+    - Row popularity weighting
+    Returns the top 3 recommended seats with scores.
+    """
+    total_rows = max(s["row"] for s in seats) + 1
+    front_threshold = total_rows // 3
+    back_threshold = (total_rows * 2) // 3
 
-# --- Simulate sensor changes every 8 seconds ---
+    candidates = []
+
+    for seat in seats:
+        if seat["occupied"]:
+            continue
+        if accessible_only and not seat["accessible"]:
+            continue
+
+        score = 0
+
+        # --- Area preference scoring ---
+        if preference == "front":
+            if seat["row"] < front_threshold:
+                score += 50
+            elif seat["row"] < front_threshold * 1.5:
+                score += 25
+        elif preference == "back":
+            if seat["row"] >= back_threshold:
+                score += 50
+            elif seat["row"] >= back_threshold - 2:
+                score += 25
+        elif preference == "middle":
+            if front_threshold <= seat["row"] < back_threshold:
+                score += 50
+            elif abs(seat["row"] - (total_rows // 2)) <= 2:
+                score += 25
+        else:
+            # No preference — slight bias towards middle
+            if front_threshold <= seat["row"] < back_threshold:
+                score += 10
+
+        # --- Entrance proximity scoring ---
+        dist_left = seat["col"]
+        dist_right = 9 - seat["col"]
+        min_dist = min(dist_left, dist_right)
+        # Closer to entrance = higher score
+        score += max(0, 20 - (min_dist * 2))
+
+        # --- Aisle adjacency bonus ---
+        if seat["col"] in [4, 5]:
+            score += 10
+
+        # --- Accessibility bonus ---
+        if seat["accessible"]:
+            score += 15 if accessible_only else 5
+
+        # --- Avoid very back row unless preferred ---
+        if seat["row"] == total_rows - 1 and preference != "back":
+            score -= 10
+
+        candidates.append({
+            "seat": seat,
+            "score": score,
+            "entrance": "Left" if dist_left <= dist_right else "Right"
+        })
+
+    # Sort by score descending
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+
+    # Return top 3
+    return candidates[:3]
+
 def simulate_changes():
+    """
+    Behavioural occupancy simulation.
+    Models realistic lecture hall patterns:
+    - Front and aisle-adjacent seats fill first
+    - Late arrivals cluster towards back rows
+    - Natural variation with weighted probability
+    """
     while True:
         time.sleep(8)
         for hall in halls.values():
-            for _ in range(random.randint(2, 4)):
-                seat = random.choice(hall["seats"])
-                seat["occupied"] = not seat["occupied"]
+            total = len(hall["seats"])
+            occupied_count = sum(1 for s in hall["seats"] if s["occupied"])
+            occupancy_rate = occupied_count / total
 
+            for seat in hall["seats"]:
+                # Base probability of change
+                change_prob = 0.03
+
+                # Front rows more likely to be occupied (students prefer front)
+                if seat["row"] < 3:
+                    if not seat["occupied"]:
+                        change_prob = 0.08  # Higher chance of becoming occupied
+                    else:
+                        change_prob = 0.01  # Low chance of freeing up
+
+                # Back rows more volatile — late arrivals and early leavers
+                elif seat["row"] >= (total // 10) - 3:
+                    change_prob = 0.05
+
+                # Aisle adjacent seats fill faster
+                if seat["col"] in [4, 5]:
+                    if not seat["occupied"]:
+                        change_prob += 0.03
+
+                # Accessible seats have lower churn
+                if seat["accessible"]:
+                    change_prob = 0.01
+
+                # If hall is very full, more likely seats free up
+                if occupancy_rate > 0.85:
+                    if seat["occupied"]:
+                        change_prob += 0.04
+
+                # If hall is very empty, more likely seats fill up
+                if occupancy_rate < 0.2:
+                    if not seat["occupied"]:
+                        change_prob += 0.05
+
+                # Apply probability
+                if random.random() < change_prob:
+                    seat["occupied"] = not seat["occupied"]
 thread = threading.Thread(target=simulate_changes, daemon=True)
 thread.start()
 
@@ -220,5 +339,30 @@ def dashboard_api():
             "available": total - occupied
         })
     return jsonify({"halls": hall_stats})
+@app.route("/api/recommend/<hall_id>")
+def get_recommendation(hall_id):
+    if "username" not in session:
+        return jsonify({"error": "Unauthorized"}), 403
+    if hall_id not in halls:
+        return jsonify({"error": "Hall not found"}), 404
+    preference = request.args.get("preference", "none")
+    accessible_only = request.args.get("accessible", "false") == "true"
+    recommendations = recommend_seat(
+        halls[hall_id]["seats"],
+        preference=preference,
+        accessible_only=accessible_only
+    )
+    return jsonify({"recommendations": [
+        {
+            "seat_id": r["seat"]["id"],
+            "seat_number": r["seat"]["id"] + 1,
+            "row": r["seat"]["row"] + 1,
+            "col": r["seat"]["col"] + 1,
+            "score": r["score"],
+            "entrance": r["entrance"],
+            "accessible": r["seat"]["accessible"]
+        }
+        for r in recommendations
+    ]})
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

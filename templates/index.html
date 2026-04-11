@@ -522,6 +522,85 @@
         .nav-tab .tab-icon { font-size: 1.3rem; }
         .nav-tab .tab-label { font-size: 0.68rem; font-weight: bold; }
 
+/* ===== RECOMMENDATIONS ===== */
+        .recommendation-box {
+            background-color: rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 14px;
+            border: 1px solid rgba(184,224,168,0.4);
+        }
+
+        .rec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.82rem;
+            font-weight: bold;
+            color: #b8e0a8;
+        }
+
+        .rec-refresh {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rec-refresh:hover { background: rgba(255,255,255,0.25); }
+
+        .rec-seats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .rec-card {
+            flex: 1;
+            min-width: 80px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .rec-card:hover {
+            border-color: #b8e0a8;
+            background-color: rgba(184,224,168,0.15);
+            transform: translateY(-2px);
+        }
+
+        .rec-card .rec-seat-num {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #b8e0a8;
+        }
+
+        .rec-card .rec-detail {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+
+        .rec-card .rec-score {
+            font-size: 0.6rem;
+            color: #6db8b0;
+            margin-top: 3px;
+        }
+
+        .rec-loading {
+            font-size: 0.78rem;
+            opacity: 0.5;
+        }
         .pulse { animation: pulse 0.5s ease; }
 
         @keyframes pulse {
@@ -549,8 +628,21 @@
     <!-- Main Content -->
     <div class="main-content">
 
+        
         <!-- SEAT MAP PANEL -->
         <div class="panel active" id="panel-map">
+            
+            <!-- Recommendation Box -->
+            <div class="recommendation-box" id="recommendationBox">
+                <div class="rec-header">
+                    <span>✨ Recommended Seats</span>
+                    <button class="rec-refresh" onclick="loadRecommendations()">Refresh</button>
+                </div>
+                <div class="rec-seats" id="recSeats">
+                    <p class="rec-loading">Loading recommendations...</p>
+                </div>
+            </div>
+
             <div class="stats-row">
                 <div class="stat-box">
                     <div class="number" id="availableCount">-</div>
@@ -718,7 +810,7 @@
             if (tab === 'legend' && ROLE === 'admin') renderAdminGrid();
         }
 
-        // --- Fetch seats ---
+  // --- Fetch seats ---
         async function fetchSeats() {
             const res = await fetch(`/api/seats/${HALL_ID}`);
             const data = await res.json();
@@ -742,6 +834,7 @@
             renderMiniGrid();
             updateStats();
             flashIndicator();
+            loadRecommendations();
 
             // Show notification for newly freed seats
             if (newlyFreed.length > 0) {
@@ -948,7 +1041,39 @@
             el.classList.add('pulse');
             setTimeout(() => el.classList.remove('pulse'), 500);
         }
+// --- Recommendations ---
+        async function loadRecommendations() {
+            const preference = activeFilter.area !== 'none' ? activeFilter.area : 'none';
+            const accessible = activeFilter.accessible ? 'true' : 'false';
+            const res = await fetch(`/api/recommend/${HALL_ID}?preference=${preference}&accessible=${accessible}`);
+            const data = await res.json();
+            const container = document.getElementById('recSeats');
 
+            if (!data.recommendations || data.recommendations.length === 0) {
+                container.innerHTML = '<p class="rec-loading">No recommendations available</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            data.recommendations.forEach((rec, index) => {
+                const card = document.createElement('div');
+                card.className = 'rec-card';
+                card.innerHTML = `
+                    <div class="rec-seat-num">S${rec.seat_number}</div>
+                    <div class="rec-detail">Row ${rec.row} · ${rec.entrance} Entrance</div>
+                    ${rec.accessible ? '<div class="rec-detail" style="color:#FFD700">♿ Accessible</div>' : ''}
+                    <div class="rec-score">Score: ${rec.score}</div>
+                `;
+                card.addEventListener('click', () => {
+                    const seat = allSeats.find(s => s.id === rec.seat_id);
+                    if (seat && !seat.occupied) {
+                        selectSeat(seat);
+                        showNotification(`✨ Seat ${rec.seat_number} selected from recommendations`);
+                    }
+                });
+                container.appendChild(card);
+            });
+        }
         fetchSeats();
         setInterval(fetchSeats, 8000);
     </script>
