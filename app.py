@@ -60,16 +60,14 @@ entrances = [
     {"id": "right", "label": "Right Entrance", "col": 9}
 ]
 def recommend_seat(seats, preference="none", accessible_only=False):
-    """
-    Seat recommendation engine.
-    Scores each available seat based on:
-    - Preferred area (front/middle/back)
-    - Proximity to nearest entrance
-    - Accessibility requirements
-    - Aisle adjacency (easier access)
-    - Row popularity weighting
-    Returns the top 3 recommended seats with scores.
-    """
+  # """ # Seat recommendation engine. # Scores each available seat based on: 
+  # - Preferred area (front/middle/back)
+  # - Proximity to nearest entrance
+  # - Accessibility requirements 
+  # - Aisle adjacency (easier access)
+  # - Row popularity weighting 
+  # Returns the top 3 recommended seats with scores. 
+  # """
     total_rows = max(s["row"] for s in seats) + 1
     front_threshold = total_rows // 3
     back_threshold = (total_rows * 2) // 3
@@ -137,13 +135,7 @@ def recommend_seat(seats, preference="none", accessible_only=False):
     return candidates[:3]
 
 def simulate_changes():
-    """
-    Behavioural occupancy simulation.
-    Models realistic lecture hall patterns:
-    - Front and aisle-adjacent seats fill first
-    - Late arrivals cluster towards back rows
-    - Natural variation with weighted probability
-    """
+   
     while True:
         time.sleep(8)
         for hall in halls.values():
